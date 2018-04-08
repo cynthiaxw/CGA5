@@ -18,4 +18,4 @@ make
 make clean
 	Deletes executable, object files and object directory
 
-Note: This is designed for linux, however it may work on Mac OSX, while it is untested. For a more reliable version, download the xcode version.
+Note: This is designed for linux, however it may work on Mac OSX, while it is untested. For a more reliable version, download the xcode version.hhh
