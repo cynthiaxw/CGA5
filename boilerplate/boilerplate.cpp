@@ -45,6 +45,11 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 
 bool lbPushed = false;
 
+#define DIS_E_S 149.2f	// Million km
+#define SCALER_E 0.75f
+#define SUN_ROTATION 17.3f
+#define EARTH_ROTATION 365
+
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
 
@@ -164,7 +169,7 @@ void DestroyGeometry(Geometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, vec3 color, Camera* camera, mat4 perspectiveMatrix, GLenum rendermode)
+void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode)
 {
 
 	// bind our shader program and the vertex array object containing our
@@ -178,12 +183,15 @@ void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, vec3 color,
 
 
 	//Bind uniforms
-	GLint uniformLocation = glGetUniformLocation(program, "Colour");
-	glUniform3f(uniformLocation, color.r, color.g, color.b); 
+	GLint uniformLocation;
 
 	mat4 modelViewProjection = perspectiveMatrix*camera->viewMatrix();
 	uniformLocation = glGetUniformLocation(program, "modelViewProjection");
 	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(modelViewProjection));
+
+	uniformLocation = glGetUniformLocation(program, "modelMatrix");
+	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(wMp));
+
 
 	glBindVertexArray(geometry->vertexArray);
 	glBindTexture(tex->target, tex->textureID);
@@ -278,6 +286,12 @@ void planetMaker(vector<vec3>* sphere, vector<vec2>* texCoord, int n){
 	}
 }
 
+void debug3(char* s, vec3 v){
+	cout << s << endl;
+	cout << v.x << "," << v.y << "," <<v.z << endl;
+}
+
+
 // ==========================================================================
 // PROGRAM ENTRY POINT
 
@@ -296,7 +310,7 @@ int main(int argc, char *argv[])
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 1);
 	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-	int width = 512, height = 512;
+	int width = 1024, height = 1024;
 	window = glfwCreateWindow(width, height, "CPSC 453 OpenGL Boilerplate", 0, 0);
 	if (!window) {
 		cout << "Program failed to create GLFW window, TERMINATING" << endl;
@@ -370,32 +384,40 @@ int main(int argc, char *argv[])
 	}
 
 
-
-
-	vector<vec3> Sun;
-	vector<vec2> sunTex;
-
-	planetMaker(&Sun, &sunTex, 120);
+//----------------------- Generate Planets ---------------------------//
+	vector<vec3> Sun;		//vertices
+	vector<vec2> sunTex;	//texture
+	planetMaker(&Sun, &sunTex, 128);
+	mat4 wMs = mat4(vec4(1,0,0,0), vec4(0,1,0,0), vec4(0,0,1,0), vec4(0,0,0,1));
 	
+	vector<vec3> Earth;
+	vector<vec2> earthTex;
+	planetMaker(&Earth, &earthTex, 72);
+	mat4 wMe = mat4(SCALER_E * vec4(1,0,0,0), SCALER_E * vec4(0,1,0,0), SCALER_E * vec4(0,0,1,0), vec4(0,0.5f,0,1));
 
 
 
+//----------------------- Generate Planets ---------------------------//
 
 	Geometry geometry;
-	Geometry frustumGeometry;
+	Geometry geometry_sun;
+	Geometry geometry_earth;
+
 
 	// call function to create and fill buffers with geometry data
-	if (!InitializeVAO(&geometry))
+	if (!InitializeVAO(&geometry_sun))
 		cout << "Program failed to intialize geometry!" << endl;
 
-	if(!LoadGeometry(&geometry, Sun.data(), sunTex.data(), Sun.size()))
+	if(!LoadGeometry(&geometry_sun, Sun.data(), sunTex.data(), Sun.size()))
 		cout << "Failed to load geometry" << endl;
 
-	if (!InitializeVAO(&frustumGeometry))
-		cout << "Program failed to intialize geometry!" << endl;
+	if (!InitializeVAO(&geometry_earth))
+	cout << "Program failed to intialize geometry!" << endl;
 
-	if(!LoadGeometry(&frustumGeometry, frustumVertices, texcoord, 16))
-		cout << "Failed to load geometry" << endl;
+	if(!LoadGeometry(&geometry_earth, Earth.data(), earthTex.data(), Earth.size()))
+		cout << "Failed to load geometry" << endl;	
+
+
 
 	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
@@ -406,23 +428,38 @@ int main(int argc, char *argv[])
 	float cursorSensitivity = PI_F/200.f;	//PI/hundred pixels
 	float movementSpeed = 0.01f;
 
-	MyTexture tex;
-	InitializeTexture(&tex, "earthmap1k.jpg", GL_TEXTURE_2D);
-	glUseProgram(program);
+	//------------------------- Bind texture ------------------------//
+
+	MyTexture texture_sun, texture_earth;
+	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_earth, "earthmap1k.jpg", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D, tex.textureID);
-	glUniform1i(glGetUniformLocation(program, "image"), 0);
+	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
+	glActiveTexture(GL_TEXTURE1);
+	glBindTexture(GL_TEXTURE_2D, texture_earth.textureID);
+
+	//------------------------- Bind texture ------------------------//
 
 
-
+	float timer = 0.f;
+	mat3 Rotation;
+	vec3 Transition;
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
 	{
+		debug3("camera", cam.pos);
 		////////////////////////
 		//Camera interaction
 		////////////////////////
 		//Translation
+
+		// Time
+		if(timer >= 2*PI_F){
+			timer = 0;
+		}
+		else timer += 0.001;
+
 
 		vec3 movement(0.f);
 
@@ -462,9 +499,20 @@ int main(int argc, char *argv[])
 		// clear screen to a dark grey colour
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// call function to draw our scene
-		RenderScene(&tex, &geometry, program, vec3(1, 0, 0), &cam, perspectiveMatrix, GL_TRIANGLES);
-		//RenderScene(&frustumGeometry, program, vec3(0, 1, 0), &cam, perspectiveMatrix, GL_LINE_STRIP);
+		// Render sun
+		// ROtation matrxi by y-axis
+		Rotation = mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		Transition = vec3(0,0,0);
+		wMs = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 0); 
+		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES);
+
+		// Render earth
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 1);
+		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES);
+
 
 		glfwSwapBuffers(window);
 
