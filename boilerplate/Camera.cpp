@@ -4,7 +4,7 @@
 using namespace std;
 using namespace glm;
 
-const float MAX_VERT = 8.f;
+const float MAX_VERT = 1.f;
 
 glm::mat4 Camera::viewMatrix() const{
 	mat4 cRotation = glm::transpose(mat4(vec4(right, 0), vec4(up, 0), vec4(-dir, 0), vec4(0, 0, 0, 1)));

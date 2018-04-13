@@ -45,10 +45,12 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 
 bool lbPushed = false;
 
+#define ROTATION_SCALER 50.f
 #define DIS_E_S 149.2f	// Million km
 #define SCALER_E 0.75f
 #define SUN_ROTATION 17.3f
-#define EARTH_ROTATION 365
+#define EARTH_ROTATION 1.f
+#define EARTH_REVOLUTION 36.5f
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -442,23 +444,40 @@ int main(int argc, char *argv[])
 
 
 	float timer = 0.f;
+	float sunTimer = 0.f;
+	float earthTimer = 0.f;
+	float earthRevoTimer = 0.f;
+
+	float sizeScaler = 1.f;
+	float sunSizeScaler = 0.5f;
+	float earthSizeScaler = 0.3f;
+
+	float tilt = 23.5f/360.f * PI_F;
+	
+
 	mat3 Rotation;
 	vec3 Transition;
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
 	{
-		debug3("camera", cam.pos);
 		////////////////////////
 		//Camera interaction
 		////////////////////////
 		//Translation
 
 		// Time
-		if(timer >= 2*PI_F){
-			timer = 0;
-		}
-		else timer += 0.001;
+		if(sunTimer >= 2*PI_F){
+			sunTimer = 0;
+		}else sunTimer += 2*PI_F/SUN_ROTATION/ROTATION_SCALER;
+
+		if(earthTimer >= 2*PI_F){
+			earthTimer = 0;
+		}else earthTimer += 2*PI_F/EARTH_ROTATION/ROTATION_SCALER;
+		
+		if(earthRevoTimer >= 2*PI_F){
+			earthRevoTimer = 0;
+		}else earthRevoTimer += 2*PI_F/EARTH_REVOLUTION/ROTATION_SCALER;
 
 
 		vec3 movement(0.f);
@@ -472,7 +491,7 @@ int main(int argc, char *argv[])
 		if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
 			movement.x += 1.f;
 		}
-		if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){
+		if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
 			movement.x -= 1.f;
 		}
 
@@ -501,7 +520,9 @@ int main(int argc, char *argv[])
 
 		// Render sun
 		// ROtation matrxi by y-axis
-		Rotation = mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		timer = sunTimer;
+		sizeScaler = sunSizeScaler;
+		Rotation = sizeScaler * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
 		Transition = vec3(0,0,0);
 		wMs = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
@@ -509,6 +530,16 @@ int main(int argc, char *argv[])
 		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES);
 
 		// Render earth
+		timer = earthTimer;
+		sizeScaler = earthSizeScaler;
+		Rotation = sizeScaler * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
+		Rotation =  Rotation * earthTilt;
+		//mat3 Revolution = mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0,1,0), vec3(sin(timer), 0, cos(timer)));
+		//Transition = vec3(3,0,0);
+		timer = earthRevoTimer;
+		Transition = vec3(3 * cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMe = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 1);
 		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES);
