@@ -46,11 +46,17 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 bool lbPushed = false;
 
 #define ROTATION_SCALER 50.f
+
 #define DIS_E_S 149.2f	// Million km
-#define SCALER_E 0.75f
+
+#define SCALER_EARTH 0.05f
+#define SCALER_SUN 0.2f
+#define SCALER_STAR 2.f
+
 #define SUN_ROTATION 17.3f
 #define EARTH_ROTATION 1.f
 #define EARTH_REVOLUTION 36.5f
+#define EARTH_REVO_RADIUS 1.f
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -378,7 +384,7 @@ int main(int argc, char *argv[])
 	};
 	//Fill in with Perspective Matrix
 	//mat4(1.f) identity matrix
-	mat4 perspectiveMatrix = glm::perspective(PI_F*0.4f, float(width)/float(height), 0.1f, 5.f);	//last 2 arg, nearst and farest
+	mat4 perspectiveMatrix = glm::perspective(PI_F*0.5f, float(width)/float(height), 0.1f, 10.f);	//last 2 arg, nearst and farest
 
 	for(int i=0; i<16; i++){
 		vec4 newPoint = inverse(perspectiveMatrix)*vec4(frustumVertices[i], 1);
@@ -390,12 +396,17 @@ int main(int argc, char *argv[])
 	vector<vec3> Sun;		//vertices
 	vector<vec2> sunTex;	//texture
 	planetMaker(&Sun, &sunTex, 128);
-	mat4 wMs = mat4(vec4(1,0,0,0), vec4(0,1,0,0), vec4(0,0,1,0), vec4(0,0,0,1));
+	mat4 wMs = mat4(SCALER_SUN * vec4(1,0,0,0), SCALER_SUN * vec4(0,1,0,0), SCALER_SUN * vec4(0,0,1,0), vec4(0,0,0,1));
 	
 	vector<vec3> Earth;
 	vector<vec2> earthTex;
 	planetMaker(&Earth, &earthTex, 72);
-	mat4 wMe = mat4(SCALER_E * vec4(1,0,0,0), SCALER_E * vec4(0,1,0,0), SCALER_E * vec4(0,0,1,0), vec4(0,0.5f,0,1));
+	mat4 wMe = mat4(SCALER_EARTH * vec4(1,0,0,0), SCALER_EARTH * vec4(0,1,0,0), SCALER_EARTH * vec4(0,0,1,0), vec4(0,0.5f,0,1));
+
+	vector<vec3> Star;
+	vector<vec2> starTex;
+	planetMaker(&Star, &starTex, 256);
+	mat4 wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
 
 
 
@@ -404,20 +415,24 @@ int main(int argc, char *argv[])
 	Geometry geometry;
 	Geometry geometry_sun;
 	Geometry geometry_earth;
+	Geometry geometry_star;
 
 
 	// call function to create and fill buffers with geometry data
 	if (!InitializeVAO(&geometry_sun))
 		cout << "Program failed to intialize geometry!" << endl;
-
 	if(!LoadGeometry(&geometry_sun, Sun.data(), sunTex.data(), Sun.size()))
 		cout << "Failed to load geometry" << endl;
 
 	if (!InitializeVAO(&geometry_earth))
-	cout << "Program failed to intialize geometry!" << endl;
-
+		cout << "Program failed to intialize geometry!" << endl;
 	if(!LoadGeometry(&geometry_earth, Earth.data(), earthTex.data(), Earth.size()))
 		cout << "Failed to load geometry" << endl;	
+
+	if (!InitializeVAO(&geometry_star))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_star, Star.data(), starTex.data(), Star.size()))
+		cout << "Failed to load geometry" << endl;
 
 
 
@@ -432,13 +447,16 @@ int main(int argc, char *argv[])
 
 	//------------------------- Bind texture ------------------------//
 
-	MyTexture texture_sun, texture_earth;
+	MyTexture texture_sun, texture_earth, texture_star;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earth, "earthmap1k.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_star, "2k_stars_milky_way.jpg", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, texture_earth.textureID);
+	glActiveTexture(GL_TEXTURE2);
+	glBindTexture(GL_TEXTURE_2D, texture_star.textureID);
 
 	//------------------------- Bind texture ------------------------//
 
@@ -448,11 +466,13 @@ int main(int argc, char *argv[])
 	float earthTimer = 0.f;
 	float earthRevoTimer = 0.f;
 
-	float sizeScaler = 1.f;
-	float sunSizeScaler = 0.5f;
-	float earthSizeScaler = 0.3f;
-
 	float tilt = 23.5f/360.f * PI_F;
+
+	float cam_phi = PI_F/2.f;
+	float cam_theta = 0;
+	cam.pos.y = cam.radius * cos(cam_phi);
+	cam.pos.x = cam.radius * abs(sin(cam_phi)) * cos(cam_theta);
+	cam.pos.z = cam.radius * abs(sin(cam_phi)) * sin(cam_theta);
 	
 
 	mat3 Rotation;
@@ -495,7 +515,7 @@ int main(int argc, char *argv[])
 			movement.x -= 1.f;
 		}
 
-		cam. move(movement*movementSpeed);
+		cam. move(movement*movementSpeed); 
 
 
 		//Rotation
@@ -505,8 +525,13 @@ int main(int argc, char *argv[])
 		vec2 cursorChange = cursorPos - lastCursorPos;
 
 		if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS){
-			cam.rotateHorizontal(-cursorChange.x*cursorSensitivity);
-			cam.rotateVertical(-cursorChange.y*cursorSensitivity);
+			//cam.rotateHorizontal(-cursorChange.x*cursorSensitivity);
+			//cam.rotateVertical(-cursorChange.y*cursorSensitivity);
+			cam_phi += cursorChange.y * cursorSensitivity;	// along longitude
+			cam_theta += cursorChange.x * cursorSensitivity;	// along latitude
+			cam.pos.y = cam.radius * cos(cam_phi);
+			cam.pos.x = cam.radius * abs(sin(cam_phi)) * cos(cam_theta);
+			cam.pos.z = cam.radius * abs(sin(cam_phi)) * sin(cam_theta);
 		}
 		lastCursorPos = cursorPos;
 
@@ -521,8 +546,7 @@ int main(int argc, char *argv[])
 		// Render sun
 		// ROtation matrxi by y-axis
 		timer = sunTimer;
-		sizeScaler = sunSizeScaler;
-		Rotation = sizeScaler * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		Rotation = SCALER_SUN * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
 		Transition = vec3(0,0,0);
 		wMs = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
@@ -531,18 +555,22 @@ int main(int argc, char *argv[])
 
 		// Render earth
 		timer = earthTimer;
-		sizeScaler = earthSizeScaler;
-		Rotation = sizeScaler * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		Rotation = SCALER_EARTH * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
 		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
 		Rotation =  Rotation * earthTilt;
 		//mat3 Revolution = mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0,1,0), vec3(sin(timer), 0, cos(timer)));
 		//Transition = vec3(3,0,0);
 		timer = earthRevoTimer;
-		Transition = vec3(3 * cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		Transition = vec3(EARTH_REVO_RADIUS * cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		wMe = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 1);
 		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES);
+
+
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 2);
+		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES);
 
 
 		glfwSwapBuffers(window);
