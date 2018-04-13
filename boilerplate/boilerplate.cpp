@@ -56,7 +56,12 @@ bool lbPushed = false;
 #define SUN_ROTATION 17.3f
 #define EARTH_ROTATION 1.f
 #define EARTH_REVOLUTION 36.5f
-#define EARTH_REVO_RADIUS 1.f
+#define EARTH_REVO_RADIUS 0.8f
+
+#define SCALER_CAM_RADIUS 0.01f
+float cam_max_r, cam_min_r;
+float cam_phi, cam_theta;
+Camera cam;
 
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
@@ -230,6 +235,15 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 		glfwSetWindowShouldClose(window, GL_TRUE);
 }
 
+void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+	cam.radius -= yoffset * SCALER_CAM_RADIUS;
+	if(cam.radius > cam_max_r) cam.radius = cam_max_r;
+	else if(cam.radius < cam_min_r) cam.radius = cam_min_r;
+	cam.pos.y = cam.radius * cos(cam_phi);
+	cam.pos.x = cam.radius * sin(cam_phi) * cos(cam_theta);
+	cam.pos.z = cam.radius * sin(cam_phi) * sin(cam_theta);
+}
+
 
 void planetMaker(vector<vec3>* sphere, vector<vec2>* texCoord, int n){
 	float step = PI_F/n;
@@ -328,6 +342,7 @@ int main(int argc, char *argv[])
 
 	// set keyboard callback function and make our context current (active)
 	glfwSetKeyCallback(window, KeyCallback);
+	glfwSetScrollCallback(window, scroll_callback);
 	glfwMakeContextCurrent(window);
 
 	//Intialize GLAD
@@ -352,45 +367,9 @@ int main(int argc, char *argv[])
 	glDepthFunc(GL_LEQUAL);
 
 	// three vertex positions and assocated colours of a triangle
-	vec3 vertices[] = {
-		vec3( -.6f, -.4f, -0.5f ),
-		vec3( .0f,  .6f, -0.5f ),
-		vec3( .6f, -.4f,-0.5f )
-	};
-
-	vec3 frustumVertices[] = {
-		vec3(-1, -1, -1),
-		vec3(-1, -1, 1),
-		vec3(-1, 1, 1),
-		vec3(1, 1, 1),
-		vec3(1, 1, -1),
-		vec3(-1, 1, -1),
-		vec3(-1, -1, -1),
-		vec3(1, -1, -1),
-		vec3(1, -1, 1),
-		vec3(-1, -1, 1),
-		vec3(-1, 1, 1),
-		vec3(-1, 1, -1),
-		vec3(1, 1, -1),
-		vec3(1, -1, -1),
-		vec3(1, -1, 1),
-		vec3(1, 1, 1)
-	};
-
-	vec2 texcoord[] = {
-		vec2(0,0),
-		vec2(0,1),
-		vec2(1,0),
-	};
 	//Fill in with Perspective Matrix
 	//mat4(1.f) identity matrix
 	mat4 perspectiveMatrix = glm::perspective(PI_F*0.5f, float(width)/float(height), 0.1f, 10.f);	//last 2 arg, nearst and farest
-
-	for(int i=0; i<16; i++){
-		vec4 newPoint = inverse(perspectiveMatrix)*vec4(frustumVertices[i], 1);
-		frustumVertices[i] = vec3(newPoint)/newPoint.w;
-	}
-
 
 //----------------------- Generate Planets ---------------------------//
 	vector<vec3> Sun;		//vertices
@@ -412,7 +391,6 @@ int main(int argc, char *argv[])
 
 //----------------------- Generate Planets ---------------------------//
 
-	Geometry geometry;
 	Geometry geometry_sun;
 	Geometry geometry_earth;
 	Geometry geometry_star;
@@ -438,7 +416,6 @@ int main(int argc, char *argv[])
 
 	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
 
-	Camera cam;
 
 	vec2 lastCursorPos;
 
@@ -468,8 +445,10 @@ int main(int argc, char *argv[])
 
 	float tilt = 23.5f/360.f * PI_F;
 
-	float cam_phi = PI_F/2.f;
-	float cam_theta = 0;
+	cam_max_r = 1.5f;
+	cam_min_r = 0.31f;
+	cam_phi = PI_F/2.f;
+	cam_theta = 0;
 	cam.pos.y = cam.radius * cos(cam_phi);
 	cam.pos.x = cam.radius * abs(sin(cam_phi)) * cos(cam_theta);
 	cam.pos.z = cam.radius * abs(sin(cam_phi)) * sin(cam_theta);
@@ -525,17 +504,22 @@ int main(int argc, char *argv[])
 		vec2 cursorChange = cursorPos - lastCursorPos;
 
 		if(glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS){
-			//cam.rotateHorizontal(-cursorChange.x*cursorSensitivity);
-			//cam.rotateVertical(-cursorChange.y*cursorSensitivity);
 			cam_phi += cursorChange.y * cursorSensitivity;	// along longitude
 			cam_theta += cursorChange.x * cursorSensitivity;	// along latitude
+			if(cam_theta > 2*PI_F) cam_theta -= 2*PI_F;
+			else if(cam_theta < -2*PI_F) cam_theta += 2*PI_F;
+			if(cam_phi > PI_F-0.001)cam_phi = PI_F-0.001;
+			if(cam_phi < 0.001)cam_phi = 0.001;
 			cam.pos.y = cam.radius * cos(cam_phi);
-			cam.pos.x = cam.radius * abs(sin(cam_phi)) * cos(cam_theta);
-			cam.pos.z = cam.radius * abs(sin(cam_phi)) * sin(cam_theta);
+			cam.pos.x = cam.radius * sin(cam_phi) * cos(cam_theta);
+			cam.pos.z = cam.radius * sin(cam_phi) * sin(cam_theta);
 		}
 		lastCursorPos = cursorPos;
 
-	
+
+
+
+
 		///////////
 		//Drawing
 		//////////
