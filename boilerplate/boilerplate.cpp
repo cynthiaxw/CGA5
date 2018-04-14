@@ -57,12 +57,12 @@ bool lbPushed = false;
 #define SUN_ROTATION 17.3f
 
 #define EARTH_ROTATION 1.f
-#define EARTH_REVOLUTION 36.5f
+#define EARTH_REVOLUTION 365.f*0.5f
 #define EARTH_REVO_RADIUS 0.2f
 
-#define MOON_ROTATION 27
-#define MOON_REVOLUTION 27.3
-#define MOON_REVO_RADIUS 0.03f
+#define MOON_ROTATION 27.f
+#define MOON_REVOLUTION 27.3f
+#define MOON_REVO_RADIUS 0.04f
 
 #define SCALER_CAM_RADIUS 0.01f
 float cam_max_r, cam_min_r;
@@ -254,6 +254,9 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	else if(key == GLFW_KEY_2 && action == GLFW_PRESS){
 		planet_mode = 2;
 	}
+	else if(key == GLFW_KEY_3 && action == GLFW_PRESS){
+		planet_mode = 3;
+	}
 	
 }
 
@@ -397,23 +400,29 @@ int main(int argc, char *argv[])
 	vector<vec3> Sun;		//vertices
 	vector<vec2> sunTex;	//texture
 	planetMaker(&Sun, &sunTex, 128);
+	mat4 wMs;
 	
 	vector<vec3> Earth;
 	vector<vec2> earthTex;
 	planetMaker(&Earth, &earthTex, 72);
+	mat4 wMe;
 
 	vector<vec3> Star;
 	vector<vec2> starTex;
 	planetMaker(&Star, &starTex, 256);
 	mat4 wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
 
-
+	vector<vec3> Moon;
+	vector<vec2> moonTex;
+	planetMaker(&Moon, &moonTex, 72);
+	mat4 wMmoon;
 
 //----------------------- Generate Planets ---------------------------//
 
 	Geometry geometry_sun;
 	Geometry geometry_earth;
 	Geometry geometry_star;
+	Geometry geometry_moon;
 
 
 	// call function to create and fill buffers with geometry data
@@ -432,6 +441,11 @@ int main(int argc, char *argv[])
 	if(!LoadGeometry(&geometry_star, Star.data(), starTex.data(), Star.size()))
 		cout << "Failed to load geometry" << endl;
 
+	if (!InitializeVAO(&geometry_moon))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_moon, Moon.data(), moonTex.data(), Moon.size()))
+		cout << "Failed to load geometry" << endl;
+
 
 
 	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -439,8 +453,7 @@ int main(int argc, char *argv[])
 
 	vec2 lastCursorPos;
 
-	float cursorSensitivity = PI_F/200.f;	//PI/hundred pixels
-	float movementSpeed = 0.01f;
+	float cursorSensitivity = PI_F/400.f;	//PI/hundred pixels
 
 	//------------------------- Bind texture ------------------------//
 
@@ -466,6 +479,7 @@ int main(int argc, char *argv[])
 	float earthTimer = 0.f;
 	float earthRevoTimer = 0.f;
 	float moonTimer = 0.f;
+	float moonRevoTimer = 0.f;
 
 	float tilt = 23.5f/180.f * PI_F;
 
@@ -506,6 +520,10 @@ int main(int argc, char *argv[])
 			if(moonTimer >= 2*PI_F){
 				moonTimer = 0;
 			}else moonTimer += 2*PI_F/MOON_ROTATION/ROTATION_SCALER;
+
+			if(moonRevoTimer >= 2*PI_F){
+				moonRevoTimer = 0;
+			}else moonRevoTimer += 2*PI_F/MOON_REVOLUTION/ROTATION_SCALER;
 		}
 
 		// Planet movement
@@ -521,7 +539,7 @@ int main(int argc, char *argv[])
 		Rotation = SCALER_EARTH * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
 		tilt = 23.5f/180.f * PI_F;
 		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
-		Rotation =  Rotation * earthTilt;
+		Rotation =  earthTilt * Rotation;
 
 		timer = earthRevoTimer;
 		Transition = EARTH_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
@@ -532,7 +550,13 @@ int main(int argc, char *argv[])
 		Rotation = SCALER_MOON * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
 		tilt = 5.f/180.f * PI_F;
 		mat3 moonTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
-
+		Rotation = moonTilt * Rotation;
+		
+		timer = moonRevoTimer;
+		Transition = MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		mat4 eMmoon = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));;	// Moon to earth
+		wMmoon = mat4(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),wMe[3]) * eMmoon;
+		
 
 		////////////////////////
 		//Camera interaction
@@ -546,8 +570,12 @@ int main(int argc, char *argv[])
 		}
 		else if(planet_mode == 2){
 			cam_scaler = SCALER_EARTH/SCALER_SUN;
-			timer = earthRevoTimer;
-			cam_transition = EARTH_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+			cam_transition = wMe[3];
+			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
+		}
+		else if (planet_mode == 3){
+			cam_scaler = SCALER_MOON/SCALER_SUN;
+			cam_transition = wMmoon[3];
 			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 		}
 
@@ -597,6 +625,11 @@ int main(int argc, char *argv[])
 		glUniform1i(glGetUniformLocation(program, "image"), 2);
 		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES,0);
 
+		// Render moon
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 3);
+		RenderScene(&texture_moon, &geometry_moon, program, &cam, perspectiveMatrix, wMmoon, GL_TRIANGLES,1);
+
 
 		glfwSwapBuffers(window);
 
@@ -607,6 +640,7 @@ int main(int argc, char *argv[])
 	DestroyGeometry(&geometry_sun);
 	DestroyGeometry(&geometry_earth);
 	DestroyGeometry(&geometry_star);
+	DestroyGeometry(&geometry_moon);
 	glUseProgram(0);
 	glDeleteProgram(program);
 	glfwDestroyWindow(window);
