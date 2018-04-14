@@ -458,9 +458,57 @@ int main(int argc, char *argv[])
 	mat4 perspectiveMatrix = glm::perspective(PI_F*0.4f, float(width)/float(height), 0.0001f, 20.f);	//last 2 arg, nearst and farest
 
 //----------------------- Generate Planets ---------------------------//
-	vector<vec3> Sun;		//vertices
-	vector<vec2> sunTex;	//texture
-	planetMaker(&Sun, &sunTex, 128);
+	vector<vec3> Planet;		//vertices
+	vector<vec2> planetTex;	//texture
+	planetMaker(&Planet, &Planet, 128);
+
+	Geometry geometry_sun;
+	Geometry geometry_earth;
+	Geometry geometry_star;
+	Geometry geometry_moon;
+	Geometry geometry_mars;
+	Geometry geometry_mercury;
+	Geometry geometry_venus;
+
+
+	// call function to create and fill buffers with geometry data
+	if (!InitializeVAO(&geometry_sun))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_sun, Planet.data(), planetTex.data(),Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_earth))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_earth, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;	
+
+	if (!InitializeVAO(&geometry_star))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_star, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_moon))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_moon, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_mars))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_mars, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_mercury))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_mercury, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_venus))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_venus, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+
+
 	mat4 wMs;
 	
 	vector<vec3> Earth;
@@ -485,38 +533,7 @@ int main(int argc, char *argv[])
 
 //----------------------- Generate Planets ---------------------------//
 
-	Geometry geometry_sun;
-	Geometry geometry_earth;
-	Geometry geometry_star;
-	Geometry geometry_moon;
-	Geometry geometry_mars;
 
-
-	// call function to create and fill buffers with geometry data
-	if (!InitializeVAO(&geometry_sun))
-		cout << "Program failed to intialize geometry!" << endl;
-	if(!LoadGeometry(&geometry_sun, Sun.data(), sunTex.data(), Sun.size()))
-		cout << "Failed to load geometry" << endl;
-
-	if (!InitializeVAO(&geometry_earth))
-		cout << "Program failed to intialize geometry!" << endl;
-	if(!LoadGeometry(&geometry_earth, Earth.data(), earthTex.data(), Earth.size()))
-		cout << "Failed to load geometry" << endl;	
-
-	if (!InitializeVAO(&geometry_star))
-		cout << "Program failed to intialize geometry!" << endl;
-	if(!LoadGeometry(&geometry_star, Star.data(), starTex.data(), Star.size()))
-		cout << "Failed to load geometry" << endl;
-
-	if (!InitializeVAO(&geometry_moon))
-		cout << "Program failed to intialize geometry!" << endl;
-	if(!LoadGeometry(&geometry_moon, Moon.data(), moonTex.data(), Moon.size()))
-		cout << "Failed to load geometry" << endl;
-
-	if (!InitializeVAO(&geometry_mars))
-		cout << "Program failed to intialize geometry!" << endl;
-	if(!LoadGeometry(&geometry_mars, Mars.data(), marsTex.data(), Mars.size()))
-		cout << "Failed to load geometry" << endl;
 
 
 
@@ -555,6 +572,10 @@ int main(int argc, char *argv[])
 	glBindTexture(GL_TEXTURE_2D, texture_earthnight.textureID);
 	glActiveTexture(GL_TEXTURE5);
 	glBindTexture(GL_TEXTURE_2D, texture_mars.textureID);
+	glActiveTexture(GL_TEXTURE6);
+	glBindTexture(GL_TEXTURE_2D, texture_venus.textureID);
+	glActiveTexture(GL_TEXTURE7);
+	glBindTexture(GL_TEXTURE_2D, texture_mercury.textureID);
 
 	//------------------------- Bind texture ------------------------//
 
