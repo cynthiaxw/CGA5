@@ -8,7 +8,9 @@
 
 // interpolated colour received from vertex stage
 uniform sampler2D image;
+uniform sampler2D nightmap;
 uniform int shade_flg;
+uniform int night_flg;
 
 in vec2 Texcoord;
 in vec3 Vertexp;
@@ -31,8 +33,12 @@ void main(void)
         vec3 l = normalize(vec3(0,0,0) - Vertexp);
         float diffuse;
         diffuse = max(dot_normal(n, l), 0);
-        float ratio = min(1, 0.3 + diffuse);
-        FragmentColour = texture(image, Texcoord) * ratio;
+        float ratio = min(1, 0.25 + diffuse);
+        
+        if(night_flg == 1){
+            FragmentColour = texture(image, Texcoord) * ratio + texture(nightmap, Texcoord) * (1 - ratio);
+        }
+        else FragmentColour = texture(image, Texcoord) * ratio;
     }else{
         FragmentColour = texture(image, Texcoord);
     }

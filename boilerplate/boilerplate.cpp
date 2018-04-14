@@ -45,26 +45,47 @@ GLuint LinkProgram(GLuint vertexShader, GLuint fragmentShader);
 
 bool lbPushed = false;
 
-#define ROTATION_SCALER 50.f
+float ROTATION_SCALER = 50.f;
 
 #define DIS_E_S 149.2f	// Million km
-
-#define SCALER_EARTH 0.025f
+#define PLANET_SIZE_SCALER 24.f
+#define PLANET_REVO_SCALER 1.f
+#define PLANET_REVO_RADIUS_SCALER 500.f
 #define SCALER_SUN 0.1f
-#define SCALER_STAR 4.f
-#define SCALER_MOON 0.01f
+#define SCALER_STAR 10.f
+
+float SCALER_JUPITER = 7.1492/PLANET_SIZE_SCALER;
+float SCALER_SATURN = 6.0268/PLANET_SIZE_SCALER;
+float SCALER_URANUS = 2.5559/PLANET_SIZE_SCALER;
+float SCALER_NEPTUNE = 2.4764/PLANET_SIZE_SCALER;
+float SCALER_EARTH = 0.63781/PLANET_SIZE_SCALER;
+float SCALER_VENUS = 0.60518/PLANET_SIZE_SCALER;
+float SCALER_MARS = 0.33962/PLANET_SIZE_SCALER;
+float SCALER_MERCURY = 0.24397/PLANET_SIZE_SCALER;
+float SCALER_MOON = 0.17381/PLANET_SIZE_SCALER;
+float SCALER_PLUTO = 0.1195/PLANET_SIZE_SCALER;
+
+float EARTH_REVOLUTION = 365 * PLANET_REVO_SCALER;
+float MOON_REVOLUTION = 27.3 * PLANET_REVO_SCALER;
+float MARS_REVOLUTION = 687 * PLANET_REVO_SCALER;
 
 #define SUN_ROTATION 17.3f
-
 #define EARTH_ROTATION 1.f
-#define EARTH_REVOLUTION 365.f*0.5f
-#define EARTH_REVO_RADIUS 0.2f
+#define MARS_ROTATION 1.f
+
+float MERCURY_REVO_RADIUS = 57.9/PLANET_REVO_RADIUS_SCALER;
+float VENUS_REVO_RADIUS = 108.2/PLANET_REVO_RADIUS_SCALER;
+float EARTH_REVO_RADIUS = 149.6/PLANET_REVO_RADIUS_SCALER;
+float MARS_REVO_RADIUS = 227.9/PLANET_REVO_RADIUS_SCALER;
+float JUPITER_REVO_RADIUS = 778.3/PLANET_REVO_RADIUS_SCALER;
+float SATURN_REVO_RADIUS = 1427/PLANET_REVO_RADIUS_SCALER;
+float URANUS_REVO_RADIUS = 2882.3/PLANET_REVO_RADIUS_SCALER;
+float NEPTUNE_REVO_RADIUS = 4523.9/PLANET_REVO_RADIUS_SCALER;
 
 #define MOON_ROTATION 27.f
-#define MOON_REVOLUTION 27.3f
 #define MOON_REVO_RADIUS 0.04f
 
-#define SCALER_CAM_RADIUS 0.01f
+#define SCALER_CAM_RADIUS 0.03f
 float cam_max_r, cam_min_r;
 float cam_phi, cam_theta;
 Camera cam;
@@ -190,7 +211,7 @@ void DestroyGeometry(Geometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode, int shadeflg)
+void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode, int shadeflg, int nightflg, MyTexture* nighttex)
 {
 
 	// bind our shader program and the vertex array object containing our
@@ -216,8 +237,15 @@ void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* cam
 	uniformLocation = glGetUniformLocation(program, "shade_flg");
 	glUniform1i(uniformLocation, shadeflg);
 
+	uniformLocation = glGetUniformLocation(program, "night_flg");
+	glUniform1i(uniformLocation, nightflg);
+
 	glBindVertexArray(geometry->vertexArray);
 	glBindTexture(tex->target, tex->textureID);
+	glDrawArrays(rendermode, 0, geometry->elementCount);
+
+	glBindVertexArray(geometry->vertexArray);
+	glBindTexture(nighttex->target, nighttex->textureID);
 	glDrawArrays(rendermode, 0, geometry->elementCount);
 
 	// reset state to default (no shader or geometry bound)
@@ -257,10 +285,43 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 	else if(key == GLFW_KEY_3 && action == GLFW_PRESS){
 		planet_mode = 3;
 	}
-	
+	else if(key == GLFW_KEY_4 && action == GLFW_PRESS){
+		planet_mode = 4;
+	}
+	else if(key == GLFW_KEY_5 && action == GLFW_PRESS){
+		planet_mode = 5;
+	}
+	else if(key == GLFW_KEY_6 && action == GLFW_PRESS){
+		planet_mode = 6;
+	}
+	else if(key == GLFW_KEY_7 && action == GLFW_PRESS){
+		planet_mode = 7;
+	}
+	else if(key == GLFW_KEY_8 && action == GLFW_PRESS){
+		planet_mode = 8;
+	}
+	else if(key == GLFW_KEY_9 && action == GLFW_PRESS){
+		planet_mode = 9;
+	}
+	else if(key == GLFW_KEY_0 && action == GLFW_PRESS){
+		planet_mode = 0;
+	}
+
+
+	else if(key == GLFW_KEY_W && action == GLFW_PRESS){
+		ROTATION_SCALER *= 0.9f;
+	}
+
+	else if(key == GLFW_KEY_S && action == GLFW_PRESS){
+		ROTATION_SCALER *= 1.4f;
+	}
+
+	else if(key == GLFW_KEY_R && action == GLFW_PRESS){
+		ROTATION_SCALER = 50.f;
+	}
 }
 
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
+void  scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
 	cam.radius -= yoffset * SCALER_CAM_RADIUS;
 	if(cam.radius > cam_max_r) cam.radius = cam_max_r;
 	else if(cam.radius < cam_min_r) cam.radius = cam_min_r;
@@ -394,7 +455,7 @@ int main(int argc, char *argv[])
 	// three vertex positions and assocated colours of a triangle
 	//Fill in with Perspective Matrix
 	//mat4(1.f) identity matrix
-	mat4 perspectiveMatrix = glm::perspective(PI_F*0.4f, float(width)/float(height), 0.01f, 10.f);	//last 2 arg, nearst and farest
+	mat4 perspectiveMatrix = glm::perspective(PI_F*0.4f, float(width)/float(height), 0.0001f, 20.f);	//last 2 arg, nearst and farest
 
 //----------------------- Generate Planets ---------------------------//
 	vector<vec3> Sun;		//vertices
@@ -417,12 +478,18 @@ int main(int argc, char *argv[])
 	planetMaker(&Moon, &moonTex, 72);
 	mat4 wMmoon;
 
+	vector<vec3> Mars;
+	vector<vec2> marsTex;
+	planetMaker(&Mars, &marsTex, 72);
+	mat4 wMmars;
+
 //----------------------- Generate Planets ---------------------------//
 
 	Geometry geometry_sun;
 	Geometry geometry_earth;
 	Geometry geometry_star;
 	Geometry geometry_moon;
+	Geometry geometry_mars;
 
 
 	// call function to create and fill buffers with geometry data
@@ -446,6 +513,11 @@ int main(int argc, char *argv[])
 	if(!LoadGeometry(&geometry_moon, Moon.data(), moonTex.data(), Moon.size()))
 		cout << "Failed to load geometry" << endl;
 
+	if (!InitializeVAO(&geometry_mars))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_mars, Mars.data(), marsTex.data(), Mars.size()))
+		cout << "Failed to load geometry" << endl;
+
 
 
 	glClearColor(0.2f, 0.2f, 0.2f, 1.0f);
@@ -453,15 +525,24 @@ int main(int argc, char *argv[])
 
 	vec2 lastCursorPos;
 
-	float cursorSensitivity = PI_F/400.f;	//PI/hundred pixels
+	float cursorSensitivity = PI_F/500.f;	//PI/hundred pixels
 
 	//------------------------- Bind texture ------------------------//
 
-	MyTexture texture_sun, texture_earth, texture_star, texture_moon;
+	MyTexture texture_sun, texture_earth, texture_star, texture_moon, texture_earthnight;
+	MyTexture texture_mars;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
-	InitializeTexture(&texture_earth, "earthmap1k.jpg", GL_TEXTURE_2D);
-	InitializeTexture(&texture_star, "2k_stars_milky_way.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_earth, "2k_earth_daymap.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_star, "8k_stars_milky_way.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_moon, "2k_moon.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_earthnight, "2k_earth_nightmap.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_mars, "2k_mars.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_mercury, "2k_meucury.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_neptune, "2k_neptune.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_jupiter, "2k_jupiter.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_saturn, "2k_saturn.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_uranus, "2k_uranus.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_venus, "2k_venus_atmosphere.jpg", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
 	glActiveTexture(GL_TEXTURE1);
@@ -470,6 +551,10 @@ int main(int argc, char *argv[])
 	glBindTexture(GL_TEXTURE_2D, texture_star.textureID);
 	glActiveTexture(GL_TEXTURE3);
 	glBindTexture(GL_TEXTURE_2D, texture_moon.textureID);
+	glActiveTexture(GL_TEXTURE4);
+	glBindTexture(GL_TEXTURE_2D, texture_earthnight.textureID);
+	glActiveTexture(GL_TEXTURE5);
+	glBindTexture(GL_TEXTURE_2D, texture_mars.textureID);
 
 	//------------------------- Bind texture ------------------------//
 
@@ -477,16 +562,19 @@ int main(int argc, char *argv[])
 	float timer = 0.f;
 	float sunTimer = 0.f;
 	float earthTimer = 0.f;
-	float earthRevoTimer = 0.f;
 	float moonTimer = 0.f;
+	float marsTimer = 0.f;
+
+	float earthRevoTimer = 0.f;
 	float moonRevoTimer = 0.f;
+	float marsRevoTimer = 0.f;
 
 	float tilt = 23.5f/180.f * PI_F;
 
-	cam.radius = SCALER_SUN + 0.5f;
+	cam.radius = SCALER_SUN + 0.7f;
 
-	cam_max_r = SCALER_SUN + 1.5f;
-	cam_min_r = SCALER_SUN + 0.11f;
+	cam_max_r = SCALER_SUN + 3.f;
+	cam_min_r = SCALER_SUN + 0.1f;
 
 	cam_phi = PI_F/2.f;
 	cam_theta = 0;
@@ -524,6 +612,15 @@ int main(int argc, char *argv[])
 			if(moonRevoTimer >= 2*PI_F){
 				moonRevoTimer = 0;
 			}else moonRevoTimer += 2*PI_F/MOON_REVOLUTION/ROTATION_SCALER;
+
+			if(marsTimer >= 2*PI_F){
+				marsTimer = 0;
+			}else marsTimer += 2*PI_F/MARS_ROTATION/ROTATION_SCALER;
+			
+			if(marsRevoTimer >= 2*PI_F){
+				marsRevoTimer = 0;
+			}else marsRevoTimer += 2*PI_F/MARS_REVOLUTION/ROTATION_SCALER;
+
 		}
 
 		// Planet movement
@@ -556,6 +653,14 @@ int main(int argc, char *argv[])
 		Transition = MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		mat4 eMmoon = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));;	// Moon to earth
 		wMmoon = mat4(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),wMe[3]) * eMmoon;
+
+		// Mars
+		timer = marsTimer; 
+		Rotation = SCALER_MARS * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = marsRevoTimer;
+		Transition = MARS_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMmars = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		
 
 		////////////////////////
@@ -563,21 +668,23 @@ int main(int argc, char *argv[])
 		////////////////////////
 
 		// Select mode
-		if(planet_mode == 1){
+		if(planet_mode == 1){	// sun
 			cam_scaler = 1.f;
 			cam_transition = vec3(0,0,0);
-			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
 		}
-		else if(planet_mode == 2){
+		else if(planet_mode == 2){	// earth
 			cam_scaler = SCALER_EARTH/SCALER_SUN;
 			cam_transition = wMe[3];
-			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 		}
-		else if (planet_mode == 3){
+		else if (planet_mode == 3){	//moon
 			cam_scaler = SCALER_MOON/SCALER_SUN;
 			cam_transition = wMmoon[3];
-			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 		}
+		else if(planet_mode == 4){	// mars
+			cam_scaler = SCALER_MARS/SCALER_SUN;
+			cam_transition = wMmars[3];
+		}
+		wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 
 		//Rotation
 		double xpos, ypos;
@@ -613,22 +720,28 @@ int main(int argc, char *argv[])
 		// Render sun
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 0); 
-		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES ,0);
+		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES ,0,0, &texture_earthnight);
 
 		// Render earth
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 1);
-		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES,1);
+		glUniform1i(glGetUniformLocation(program, "nightmap"), 4);
+		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES,1,1, &texture_earthnight);
 
 		// Render star background
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 2);
-		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES,0);
+		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES,0,0, &texture_earthnight);
 
 		// Render moon
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 3);
-		RenderScene(&texture_moon, &geometry_moon, program, &cam, perspectiveMatrix, wMmoon, GL_TRIANGLES,1);
+		RenderScene(&texture_moon, &geometry_moon, program, &cam, perspectiveMatrix, wMmoon, GL_TRIANGLES,1,0, &texture_earthnight);
+
+		// Render Mars
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 5);
+		RenderScene(&texture_mars, &geometry_mars, program, &cam, perspectiveMatrix, wMmars, GL_TRIANGLES,1,0, &texture_mars);
 
 
 		glfwSwapBuffers(window);
