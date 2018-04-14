@@ -15,14 +15,20 @@ uniform mat4 modelViewProjection;
 uniform mat4 modelMatrix;
 
 out vec2 Texcoord;
+out vec3 Vertexp;
+out vec3 center;
 
 void main()
 {
+    vec4 tmp = modelMatrix * vec4(0,0,0,1);
+    center.x = tmp.x;
+    center.y = tmp.y;
+    center.z = tmp.z;
+    tmp = modelMatrix * vec4(VertexPosition, 1.0);
+    Vertexp.x = tmp.x;
+    Vertexp.y = tmp.y;
+    Vertexp.z = tmp.z;
     // assign vertex position without modification
-    //gl_Position = modelViewProjection * vec4(VertexPosition.x, VertexPosition.y+1.0, VertexPosition.z, 1.0);
-    
-    //vec3 tmpvertex = (modelMatrix * vec4(VertexPosition, 1.0)).xyz;
     gl_Position = modelViewProjection * modelMatrix * vec4(VertexPosition, 1.0);
-
     Texcoord = TextureCoord;
 }

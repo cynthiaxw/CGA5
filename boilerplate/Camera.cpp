@@ -10,7 +10,7 @@ glm::mat4 Camera::viewMatrix() const{
 	// mat4 cRotation = glm::transpose(mat4(vec4(right, 0), vec4(up, 0), vec4(-dir, 0), vec4(0, 0, 0, 1)));
 	// mat4 cTranslation = glm::translate(mat4(1.f), -pos);
 	// return cRotation * cTranslation;	
-	return glm::lookAt(pos, vec3(0,0,0), up);
+	return glm::lookAt(pos, centre, up);
 }
 
 void Camera::rotateVertical(float radians){

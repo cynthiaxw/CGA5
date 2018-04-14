@@ -49,20 +49,28 @@ bool lbPushed = false;
 
 #define DIS_E_S 149.2f	// Million km
 
-#define SCALER_EARTH 0.05f
-#define SCALER_SUN 0.2f
-#define SCALER_STAR 2.f
+#define SCALER_EARTH 0.025f
+#define SCALER_SUN 0.1f
+#define SCALER_STAR 4.f
+#define SCALER_MOON 0.01f
 
 #define SUN_ROTATION 17.3f
+
 #define EARTH_ROTATION 1.f
 #define EARTH_REVOLUTION 36.5f
-#define EARTH_REVO_RADIUS 0.8f
+#define EARTH_REVO_RADIUS 0.2f
+
+#define MOON_ROTATION 27
+#define MOON_REVOLUTION 27.3
+#define MOON_REVO_RADIUS 0.03f
 
 #define SCALER_CAM_RADIUS 0.01f
 float cam_max_r, cam_min_r;
 float cam_phi, cam_theta;
 Camera cam;
 
+
+int planet_mode = 1;
 // --------------------------------------------------------------------------
 // Functions to set up OpenGL shader programs for rendering
 
@@ -182,7 +190,7 @@ void DestroyGeometry(Geometry *geometry)
 // --------------------------------------------------------------------------
 // Rendering function that draws our scene to the frame buffer
 
-void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode)
+void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode, int shadeflg)
 {
 
 	// bind our shader program and the vertex array object containing our
@@ -205,6 +213,8 @@ void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* cam
 	uniformLocation = glGetUniformLocation(program, "modelMatrix");
 	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(wMp));
 
+	uniformLocation = glGetUniformLocation(program, "shade_flg");
+	glUniform1i(uniformLocation, shadeflg);
 
 	glBindVertexArray(geometry->vertexArray);
 	glBindTexture(tex->target, tex->textureID);
@@ -220,6 +230,7 @@ void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* cam
 
 // --------------------------------------------------------------------------
 // GLFW callback functions
+int pause_flg = 0;
 
 // reports GLFW errors
 void ErrorCallback(int error, const char* description)
@@ -233,6 +244,17 @@ void KeyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
 {
 	if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
 		glfwSetWindowShouldClose(window, GL_TRUE);
+	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && pause_flg == 0)
+		pause_flg = 1;		
+	else if (key == GLFW_KEY_SPACE && action == GLFW_PRESS && pause_flg == 1)
+		pause_flg = 0;
+	else if(key == GLFW_KEY_1 && action == GLFW_PRESS){
+		planet_mode = 1;
+	}
+	else if(key == GLFW_KEY_2 && action == GLFW_PRESS){
+		planet_mode = 2;
+	}
+	
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset){
@@ -369,18 +391,16 @@ int main(int argc, char *argv[])
 	// three vertex positions and assocated colours of a triangle
 	//Fill in with Perspective Matrix
 	//mat4(1.f) identity matrix
-	mat4 perspectiveMatrix = glm::perspective(PI_F*0.5f, float(width)/float(height), 0.1f, 10.f);	//last 2 arg, nearst and farest
+	mat4 perspectiveMatrix = glm::perspective(PI_F*0.4f, float(width)/float(height), 0.01f, 10.f);	//last 2 arg, nearst and farest
 
 //----------------------- Generate Planets ---------------------------//
 	vector<vec3> Sun;		//vertices
 	vector<vec2> sunTex;	//texture
 	planetMaker(&Sun, &sunTex, 128);
-	mat4 wMs = mat4(SCALER_SUN * vec4(1,0,0,0), SCALER_SUN * vec4(0,1,0,0), SCALER_SUN * vec4(0,0,1,0), vec4(0,0,0,1));
 	
 	vector<vec3> Earth;
 	vector<vec2> earthTex;
 	planetMaker(&Earth, &earthTex, 72);
-	mat4 wMe = mat4(SCALER_EARTH * vec4(1,0,0,0), SCALER_EARTH * vec4(0,1,0,0), SCALER_EARTH * vec4(0,0,1,0), vec4(0,0.5f,0,1));
 
 	vector<vec3> Star;
 	vector<vec2> starTex;
@@ -424,16 +444,19 @@ int main(int argc, char *argv[])
 
 	//------------------------- Bind texture ------------------------//
 
-	MyTexture texture_sun, texture_earth, texture_star;
+	MyTexture texture_sun, texture_earth, texture_star, texture_moon;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earth, "earthmap1k.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_star, "2k_stars_milky_way.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_moon, "2k_moon.jpg", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
 	glActiveTexture(GL_TEXTURE1);
 	glBindTexture(GL_TEXTURE_2D, texture_earth.textureID);
 	glActiveTexture(GL_TEXTURE2);
 	glBindTexture(GL_TEXTURE_2D, texture_star.textureID);
+	glActiveTexture(GL_TEXTURE3);
+	glBindTexture(GL_TEXTURE_2D, texture_moon.textureID);
 
 	//------------------------- Bind texture ------------------------//
 
@@ -442,60 +465,91 @@ int main(int argc, char *argv[])
 	float sunTimer = 0.f;
 	float earthTimer = 0.f;
 	float earthRevoTimer = 0.f;
+	float moonTimer = 0.f;
 
-	float tilt = 23.5f/360.f * PI_F;
+	float tilt = 23.5f/180.f * PI_F;
 
-	cam_max_r = 1.5f;
-	cam_min_r = 0.31f;
+	cam.radius = SCALER_SUN + 0.5f;
+
+	cam_max_r = SCALER_SUN + 1.5f;
+	cam_min_r = SCALER_SUN + 0.11f;
+
 	cam_phi = PI_F/2.f;
 	cam_theta = 0;
 	cam.pos.y = cam.radius * cos(cam_phi);
 	cam.pos.x = cam.radius * abs(sin(cam_phi)) * cos(cam_theta);
 	cam.pos.z = cam.radius * abs(sin(cam_phi)) * sin(cam_theta);
 	
+	float cam_scaler = 1;
 
 	mat3 Rotation;
 	vec3 Transition;
+	vec3 cam_transition;
 
 	// run an event-triggered main loop
 	while (!glfwWindowShouldClose(window))
 	{
+		if(pause_flg == 0){
+			// Time
+			if(sunTimer >= 2*PI_F){
+				sunTimer = 0;
+			}else sunTimer += 2*PI_F/SUN_ROTATION/ROTATION_SCALER;
+
+			if(earthTimer >= 2*PI_F){
+				earthTimer = 0;
+			}else earthTimer += 2*PI_F/EARTH_ROTATION/ROTATION_SCALER;
+			
+			if(earthRevoTimer >= 2*PI_F){
+				earthRevoTimer = 0;
+			}else earthRevoTimer += 2*PI_F/EARTH_REVOLUTION/ROTATION_SCALER;
+
+			if(moonTimer >= 2*PI_F){
+				moonTimer = 0;
+			}else moonTimer += 2*PI_F/MOON_ROTATION/ROTATION_SCALER;
+		}
+
+		// Planet movement
+
+		// Sun
+		timer = sunTimer;
+		Rotation = SCALER_SUN * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		Transition = vec3(0,0,0);
+		wMs = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Earth
+		timer = earthTimer; 
+		Rotation = SCALER_EARTH * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		tilt = 23.5f/180.f * PI_F;
+		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
+		Rotation =  Rotation * earthTilt;
+
+		timer = earthRevoTimer;
+		Transition = EARTH_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMe = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Moon
+		timer = moonTimer;
+		Rotation = SCALER_MOON * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+		tilt = 5.f/180.f * PI_F;
+		mat3 moonTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
+
+
 		////////////////////////
 		//Camera interaction
 		////////////////////////
-		//Translation
 
-		// Time
-		if(sunTimer >= 2*PI_F){
-			sunTimer = 0;
-		}else sunTimer += 2*PI_F/SUN_ROTATION/ROTATION_SCALER;
-
-		if(earthTimer >= 2*PI_F){
-			earthTimer = 0;
-		}else earthTimer += 2*PI_F/EARTH_ROTATION/ROTATION_SCALER;
-		
-		if(earthRevoTimer >= 2*PI_F){
-			earthRevoTimer = 0;
-		}else earthRevoTimer += 2*PI_F/EARTH_REVOLUTION/ROTATION_SCALER;
-
-
-		vec3 movement(0.f);
-
-		if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
-			movement.z += 1.f;
+		// Select mode
+		if(planet_mode == 1){
+			cam_scaler = 1.f;
+			cam_transition = vec3(0,0,0);
+			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
 		}
-		if(glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS){
-			movement.z -= 1.f;
+		else if(planet_mode == 2){
+			cam_scaler = SCALER_EARTH/SCALER_SUN;
+			timer = earthRevoTimer;
+			cam_transition = EARTH_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+			wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 		}
-		if(glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS){
-			movement.x += 1.f;
-		}
-		if(glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS){ 
-			movement.x -= 1.f;
-		}
-
-		cam. move(movement*movementSpeed); 
-
 
 		//Rotation
 		double xpos, ypos;
@@ -510,14 +564,15 @@ int main(int argc, char *argv[])
 			else if(cam_theta < -2*PI_F) cam_theta += 2*PI_F;
 			if(cam_phi > PI_F-0.001)cam_phi = PI_F-0.001;
 			if(cam_phi < 0.001)cam_phi = 0.001;
-			cam.pos.y = cam.radius * cos(cam_phi);
-			cam.pos.x = cam.radius * sin(cam_phi) * cos(cam_theta);
-			cam.pos.z = cam.radius * sin(cam_phi) * sin(cam_theta);
 		}
 		lastCursorPos = cursorPos;
 
+		cam.pos.y = cam.radius * cos(cam_phi);
+		cam.pos.x = cam.radius * sin(cam_phi) * cos(cam_theta);
+		cam.pos.z = cam.radius * sin(cam_phi) * sin(cam_theta);
 
-
+		cam.centre = vec3(0,0,0) + cam_transition;
+		cam.pos = cam_scaler*cam.pos + cam_transition;
 
 
 		///////////
@@ -528,33 +583,19 @@ int main(int argc, char *argv[])
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// Render sun
-		// ROtation matrxi by y-axis
-		timer = sunTimer;
-		Rotation = SCALER_SUN * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
-		Transition = vec3(0,0,0);
-		wMs = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 0); 
-		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES);
+		RenderScene(&texture_sun, &geometry_sun, program, &cam, perspectiveMatrix, wMs, GL_TRIANGLES ,0);
 
 		// Render earth
-		timer = earthTimer;
-		Rotation = SCALER_EARTH * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
-		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
-		Rotation =  Rotation * earthTilt;
-		//mat3 Revolution = mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0,1,0), vec3(sin(timer), 0, cos(timer)));
-		//Transition = vec3(3,0,0);
-		timer = earthRevoTimer;
-		Transition = vec3(EARTH_REVO_RADIUS * cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
-		wMe = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 1);
-		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES);
+		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES,1);
 
-
+		// Render star background
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 2);
-		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES);
+		RenderScene(&texture_star, &geometry_star, program, &cam, perspectiveMatrix, wMstar, GL_TRIANGLES,0);
 
 
 		glfwSwapBuffers(window);
@@ -563,7 +604,9 @@ int main(int argc, char *argv[])
 	}
 
 	// clean up allocated resources before exit
-	DestroyGeometry(&geometry);
+	DestroyGeometry(&geometry_sun);
+	DestroyGeometry(&geometry_earth);
+	DestroyGeometry(&geometry_star);
 	glUseProgram(0);
 	glDeleteProgram(program);
 	glfwDestroyWindow(window);
