@@ -1,4 +1,12 @@
 ///////////////////////
+// CPSC4543
+// Assignment 5
+// Name: Xi Wang
+// UCID: 30057535	
+///////////////////////
+
+
+///////////////////////
 // HOW TO BUILD     //
 /////////////////////
 
@@ -18,4 +26,48 @@ make
 make clean
 	Deletes executable, object files and object directory
 
-Note: This is designed for linux, however it may work on Mac OSX, while it is untested. For a more reliable version, download the xcode version.hhh
+Note: This is designed for linux, however it may work on Mac OSX, while it is untested. For a more reliable version, download the xcode version.
+
+
+///////////////////////
+//   HOW TO TEST     //
+///////////////////////
+
+-Switch between planets:
+	-1:	Sun
+	-2:	Mercury
+	-3:	Venus
+	-4:	Earth
+	-5:	Moon
+	-6:	Mars
+	-7:	Jupiter
+	-8:	Saturn
+	-9:	Uranus
+	-0:	Neptune
+
+-Camera movement:
+	-Click and Drag
+
+-Zooming:	
+	-Scroll up and down
+
+-Change the time speed:
+	-W:	Speed up
+	-S:	Slow down
+
+-Esc: Exit program
+
+///////////////////////
+//     Features      //
+///////////////////////
+
+1. Earth night map.
+2. Completed solar system. 
+	-The distance between palnets was adjusted accordingly.
+	-The rotation period and revolution period are based on the real ones.
+	-Saturn rings were added.
+	-Switch between planets.
+	-Slow down or speed up the animation.
+3. The orbital inclination and axial tilt are difficult to recognize. Focus on the Earth (press 4) and adjust the camera to see the relation of the shading and rotation direction, and you will get the scense of axial tilt. At the mean time, the moon's inclination is also clear to been seen. And the moon has its axial tilt, which is only 5 degrees, as well.
+	
+ 
