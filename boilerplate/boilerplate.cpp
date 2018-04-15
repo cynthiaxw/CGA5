@@ -51,13 +51,13 @@ float ROTATION_SCALER = 50.f;
 #define PLANET_SIZE_SCALER 24.f
 #define PLANET_REVO_SCALER 1.f
 #define PLANET_REVO_RADIUS_SCALER 500.f
-#define SCALER_SUN 0.1f
 #define SCALER_STAR 10.f
 
-float SCALER_JUPITER = 7.1492/PLANET_SIZE_SCALER;
-float SCALER_SATURN = 6.0268/PLANET_SIZE_SCALER;
-float SCALER_URANUS = 2.5559/PLANET_SIZE_SCALER;
-float SCALER_NEPTUNE = 2.4764/PLANET_SIZE_SCALER;
+float SCALER_SUN = 0.1f;//8/PLANET_SIZE_SCALER;
+float SCALER_JUPITER = 2/PLANET_SIZE_SCALER;//6.9/PLANET_SIZE_SCALER;
+float SCALER_SATURN = 1.7/PLANET_SIZE_SCALER;//6.0268/PLANET_SIZE_SCALER;
+float SCALER_URANUS = 0.731/PLANET_SIZE_SCALER;//2.5559/PLANET_SIZE_SCALER;
+float SCALER_NEPTUNE = 0.7076/PLANET_SIZE_SCALER;//2.4764/PLANET_SIZE_SCALER;
 float SCALER_EARTH = 0.63781/PLANET_SIZE_SCALER;
 float SCALER_VENUS = 0.60518/PLANET_SIZE_SCALER;
 float SCALER_MARS = 0.33962/PLANET_SIZE_SCALER;
@@ -68,16 +68,28 @@ float SCALER_PLUTO = 0.1195/PLANET_SIZE_SCALER;
 float EARTH_REVOLUTION = 365 * PLANET_REVO_SCALER;
 float MOON_REVOLUTION = 27.3 * PLANET_REVO_SCALER;
 float MARS_REVOLUTION = 687 * PLANET_REVO_SCALER;
+float MERCURY_REVOLUTION = 87.96 * PLANET_REVO_SCALER;
+float VENUS_REVOLUTION = 224.7 * PLANET_REVO_SCALER;
+float JUPITER_REVOLUTION = 11.86 * 365 * PLANET_REVO_SCALER;
+float SATURN_REVOLUTION = 29.5 * 365 * PLANET_REVO_SCALER;
+float URANUS_REVOLUTION = 84 * 365 * PLANET_REVO_SCALER;
+float NEPTUNE_REVOLUTION = 164.8 * 365 * PLANET_REVO_SCALER;
 
 #define SUN_ROTATION 17.3f
 #define EARTH_ROTATION 1.f
 #define MARS_ROTATION 1.f
+#define MERCURY_ROTATION 58.65f
+#define VENUS_ROTATION 243.02f
+#define JUPITER_ROTATION 0.41f
+#define SATURN_ROTATION 0.42f
+#define URANUS_ROTATION 0.6458f
+#define NEPTUNE_ROTATION 0.9167f
 
 float MERCURY_REVO_RADIUS = 57.9/PLANET_REVO_RADIUS_SCALER;
 float VENUS_REVO_RADIUS = 108.2/PLANET_REVO_RADIUS_SCALER;
 float EARTH_REVO_RADIUS = 149.6/PLANET_REVO_RADIUS_SCALER;
 float MARS_REVO_RADIUS = 227.9/PLANET_REVO_RADIUS_SCALER;
-float JUPITER_REVO_RADIUS = 778.3/PLANET_REVO_RADIUS_SCALER;
+float JUPITER_REVO_RADIUS = 380.3/PLANET_REVO_RADIUS_SCALER;//778.3/PLANET_REVO_RADIUS_SCALER;
 float SATURN_REVO_RADIUS = 1427/PLANET_REVO_RADIUS_SCALER;
 float URANUS_REVO_RADIUS = 2882.3/PLANET_REVO_RADIUS_SCALER;
 float NEPTUNE_REVO_RADIUS = 4523.9/PLANET_REVO_RADIUS_SCALER;
@@ -460,7 +472,7 @@ int main(int argc, char *argv[])
 //----------------------- Generate Planets ---------------------------//
 	vector<vec3> Planet;		//vertices
 	vector<vec2> planetTex;	//texture
-	planetMaker(&Planet, &Planet, 128);
+	planetMaker(&Planet, &planetTex, 128);
 
 	Geometry geometry_sun;
 	Geometry geometry_earth;
@@ -469,6 +481,10 @@ int main(int argc, char *argv[])
 	Geometry geometry_mars;
 	Geometry geometry_mercury;
 	Geometry geometry_venus;
+	Geometry geometry_jupiter;
+	Geometry geometry_saturn;
+	Geometry geometry_uranus;
+	Geometry geometry_neptune;
 
 
 	// call function to create and fill buffers with geometry data
@@ -507,29 +523,30 @@ int main(int argc, char *argv[])
 	if(!LoadGeometry(&geometry_venus, Planet.data(), planetTex.data(), Planet.size()))
 		cout << "Failed to load geometry" << endl;
 
+	if (!InitializeVAO(&geometry_jupiter))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_jupiter, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_saturn))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_saturn, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_uranus))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_uranus, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
+
+	if (!InitializeVAO(&geometry_neptune))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_neptune, Planet.data(), planetTex.data(), Planet.size()))
+		cout << "Failed to load geometry" << endl;
 
 
-	mat4 wMs;
-	
-	vector<vec3> Earth;
-	vector<vec2> earthTex;
-	planetMaker(&Earth, &earthTex, 72);
-	mat4 wMe;
 
-	vector<vec3> Star;
-	vector<vec2> starTex;
-	planetMaker(&Star, &starTex, 256);
+	mat4 wMs, wMe, wMmoon, wMmars, wMmercury, wMjupiter, wMsaturn, wMuranus, wMvenus, wMneptune;
 	mat4 wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
-
-	vector<vec3> Moon;
-	vector<vec2> moonTex;
-	planetMaker(&Moon, &moonTex, 72);
-	mat4 wMmoon;
-
-	vector<vec3> Mars;
-	vector<vec2> marsTex;
-	planetMaker(&Mars, &marsTex, 72);
-	mat4 wMmars;
 
 //----------------------- Generate Planets ---------------------------//
 
@@ -547,14 +564,14 @@ int main(int argc, char *argv[])
 	//------------------------- Bind texture ------------------------//
 
 	MyTexture texture_sun, texture_earth, texture_star, texture_moon, texture_earthnight;
-	MyTexture texture_mars;
+	MyTexture texture_mars, texture_venus, texture_mercury, texture_saturn, texture_jupiter, texture_uranus, texture_neptune;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earth, "2k_earth_daymap.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_star, "8k_stars_milky_way.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_moon, "2k_moon.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earthnight, "2k_earth_nightmap.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_mars, "2k_mars.jpg", GL_TEXTURE_2D);
-	InitializeTexture(&texture_mercury, "2k_meucury.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_mercury, "2k_mercury.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_neptune, "2k_neptune.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_jupiter, "2k_jupiter.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_saturn, "2k_saturn.jpg", GL_TEXTURE_2D);
@@ -576,6 +593,14 @@ int main(int argc, char *argv[])
 	glBindTexture(GL_TEXTURE_2D, texture_venus.textureID);
 	glActiveTexture(GL_TEXTURE7);
 	glBindTexture(GL_TEXTURE_2D, texture_mercury.textureID);
+	glActiveTexture(GL_TEXTURE8);
+	glBindTexture(GL_TEXTURE_2D, texture_jupiter.textureID);
+	glActiveTexture(GL_TEXTURE9);
+	glBindTexture(GL_TEXTURE_2D, texture_saturn.textureID);
+	glActiveTexture(GL_TEXTURE10);
+	glBindTexture(GL_TEXTURE_2D, texture_uranus.textureID);
+	glActiveTexture(GL_TEXTURE11);
+	glBindTexture(GL_TEXTURE_2D, texture_neptune.textureID);
 
 	//------------------------- Bind texture ------------------------//
 
@@ -585,10 +610,22 @@ int main(int argc, char *argv[])
 	float earthTimer = 0.f;
 	float moonTimer = 0.f;
 	float marsTimer = 0.f;
+	float mercuryTimer = 0.f;
+	float venusTimer = 0.f;
+	float jupiterTimer = 0.f;
+	float saturnTimer = 0.f;
+	float uranusTimer = 0.f;
+	float neptuneTimer = 0.f;
 
 	float earthRevoTimer = 0.f;
 	float moonRevoTimer = 0.f;
 	float marsRevoTimer = 0.f;
+	float venusRevoTimer = 0.f;
+	float mercuryRevoTimer = 0.f;
+	float jupiterRevoTimer = 0.f;
+	float saturnRevoTimer = 0.f;
+	float uranusRevoTimer = 0.f;
+	float neptuneRevoTimer = 0.f;
 
 	float tilt = 23.5f/180.f * PI_F;
 
@@ -642,6 +679,46 @@ int main(int argc, char *argv[])
 				marsRevoTimer = 0;
 			}else marsRevoTimer += 2*PI_F/MARS_REVOLUTION/ROTATION_SCALER;
 
+			if(venusTimer >= 2*PI_F){
+				venusTimer = 0;
+			}else venusTimer += 2*PI_F/VENUS_ROTATION/ROTATION_SCALER;
+			
+			if(venusRevoTimer >= 2*PI_F){
+				venusRevoTimer = 0;
+			}else venusRevoTimer += 2*PI_F/VENUS_REVOLUTION/ROTATION_SCALER;
+
+			if(mercuryTimer >= 2*PI_F){
+				mercuryTimer = 0;
+			}else mercuryTimer += 2*PI_F/MERCURY_ROTATION/ROTATION_SCALER;
+			
+			if(mercuryRevoTimer >= 2*PI_F){
+				mercuryRevoTimer = 0;
+			}else mercuryRevoTimer += 2*PI_F/MERCURY_REVOLUTION/ROTATION_SCALER;
+
+			if(jupiterTimer >= 2*PI_F){
+				jupiterTimer = 0;
+			}else jupiterTimer += 2*PI_F/JUPITER_ROTATION/ROTATION_SCALER;
+			
+			if(jupiterRevoTimer >= 2*PI_F){
+				jupiterRevoTimer = 0;
+			}else jupiterRevoTimer += 2*PI_F/JUPITER_REVOLUTION/ROTATION_SCALER;
+
+			if(saturnTimer >= 2*PI_F){
+				saturnTimer = 0;
+			}else saturnTimer += 2*PI_F/SATURN_ROTATION/ROTATION_SCALER;
+			
+			if(saturnRevoTimer >= 2*PI_F){
+				saturnRevoTimer = 0;
+			}else saturnRevoTimer += 2*PI_F/SATURN_REVOLUTION/ROTATION_SCALER;
+
+			if(neptuneTimer >= 2*PI_F){
+				neptuneTimer = 0;
+			}else neptuneTimer += 2*PI_F/NEPTUNE_ROTATION/ROTATION_SCALER;
+			
+			if(neptuneRevoTimer >= 2*PI_F){
+				neptuneRevoTimer = 0;
+			}else neptuneRevoTimer += 2*PI_F/NEPTUNE_REVOLUTION/ROTATION_SCALER;
+
 		}
 
 		// Planet movement
@@ -682,6 +759,56 @@ int main(int argc, char *argv[])
 		timer = marsRevoTimer;
 		Transition = MARS_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		wMmars = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Mercury
+		timer = mercuryTimer; 
+		Rotation = SCALER_MERCURY * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = mercuryRevoTimer;
+		Transition = MERCURY_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMmercury = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Venus
+		timer = venusTimer; 
+		Rotation = SCALER_VENUS * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = venusRevoTimer;
+		Transition = VENUS_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMvenus = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Jupiter
+		timer = jupiterTimer; 
+		Rotation = SCALER_JUPITER * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = jupiterRevoTimer;
+		Transition = JUPITER_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMjupiter = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Saturn
+		timer = saturnTimer; 
+		Rotation = SCALER_SATURN * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = saturnRevoTimer;
+		Transition = SATURN_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMsaturn = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Uranus
+		timer = uranusTimer; 
+		Rotation = SCALER_URANUS * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = uranusRevoTimer;
+		Transition = URANUS_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMuranus = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+		// Neptune
+		timer = neptuneTimer; 
+		Rotation = SCALER_NEPTUNE* mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
+
+		timer = neptuneRevoTimer;
+		Transition = NEPTUNE_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		wMneptune = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
+
 		
 
 		////////////////////////
@@ -693,17 +820,41 @@ int main(int argc, char *argv[])
 			cam_scaler = 1.f;
 			cam_transition = vec3(0,0,0);
 		}
-		else if(planet_mode == 2){	// earth
+		else if(planet_mode == 4){	// earth
 			cam_scaler = SCALER_EARTH/SCALER_SUN;
 			cam_transition = wMe[3];
 		}
-		else if (planet_mode == 3){	//moon
+		else if (planet_mode == 5){	//moon
 			cam_scaler = SCALER_MOON/SCALER_SUN;
 			cam_transition = wMmoon[3];
 		}
-		else if(planet_mode == 4){	// mars
+		else if(planet_mode == 6){	// mars
 			cam_scaler = SCALER_MARS/SCALER_SUN;
 			cam_transition = wMmars[3];
+		}
+		else if(planet_mode == 2){	// mercury
+			cam_scaler = SCALER_MERCURY/SCALER_SUN;
+			cam_transition = wMmercury[3];
+		}
+		else if(planet_mode == 3){	// venus
+			cam_scaler = SCALER_VENUS/SCALER_SUN;
+			cam_transition = wMvenus[3];
+		}
+		else if(planet_mode == 7){	// jupiter
+			cam_scaler = SCALER_JUPITER/SCALER_SUN;
+			cam_transition = wMjupiter[3];
+		}
+		else if(planet_mode == 8){	// saturn
+			cam_scaler = SCALER_SATURN/SCALER_SUN;
+			cam_transition = wMsaturn[3];
+		}
+		else if(planet_mode == 9){	// uranus
+			cam_scaler = SCALER_URANUS/SCALER_SUN;
+			cam_transition = wMuranus[3];
+		}
+		else if(planet_mode == 0){	// neptune
+			cam_scaler = SCALER_NEPTUNE/SCALER_SUN;
+			cam_transition = wMneptune[3];
 		}
 		wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(cam_transition,1));
 
@@ -763,6 +914,36 @@ int main(int argc, char *argv[])
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 5);
 		RenderScene(&texture_mars, &geometry_mars, program, &cam, perspectiveMatrix, wMmars, GL_TRIANGLES,1,0, &texture_mars);
+
+		// Render Mercury
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 7);
+		RenderScene(&texture_mercury, &geometry_mercury, program, &cam, perspectiveMatrix, wMmercury, GL_TRIANGLES,1,0, &texture_mercury);
+
+		// Render Venus
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 6);
+		RenderScene(&texture_venus, &geometry_venus, program, &cam, perspectiveMatrix, wMvenus, GL_TRIANGLES,1,0, &texture_venus);
+
+		// Render Jupiter
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 6);
+		RenderScene(&texture_jupiter, &geometry_jupiter, program, &cam, perspectiveMatrix, wMjupiter, GL_TRIANGLES,1,0, &texture_jupiter);
+
+		// Render Saturn
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 9);
+		RenderScene(&texture_saturn, &geometry_saturn, program, &cam, perspectiveMatrix, wMsaturn, GL_TRIANGLES,1,0, &texture_saturn);
+
+		// Render Uranus
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 10);
+		RenderScene(&texture_uranus, &geometry_uranus, program, &cam, perspectiveMatrix, wMuranus, GL_TRIANGLES,1,0, &texture_uranus);
+
+		// Render Neptune
+		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "image"), 11);
+		RenderScene(&texture_neptune, &geometry_neptune, program, &cam, perspectiveMatrix, wMneptune, GL_TRIANGLES,1,0, &texture_neptune);
 
 
 		glfwSwapBuffers(window);
