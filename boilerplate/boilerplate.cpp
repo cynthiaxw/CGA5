@@ -89,10 +89,10 @@ float MERCURY_REVO_RADIUS = 57.9/PLANET_REVO_RADIUS_SCALER;
 float VENUS_REVO_RADIUS = 108.2/PLANET_REVO_RADIUS_SCALER;
 float EARTH_REVO_RADIUS = 149.6/PLANET_REVO_RADIUS_SCALER;
 float MARS_REVO_RADIUS = 227.9/PLANET_REVO_RADIUS_SCALER;
-float JUPITER_REVO_RADIUS = 380.3/PLANET_REVO_RADIUS_SCALER;//778.3/PLANET_REVO_RADIUS_SCALER;
-float SATURN_REVO_RADIUS = 1427/PLANET_REVO_RADIUS_SCALER;
-float URANUS_REVO_RADIUS = 2882.3/PLANET_REVO_RADIUS_SCALER;
-float NEPTUNE_REVO_RADIUS = 4523.9/PLANET_REVO_RADIUS_SCALER;
+float JUPITER_REVO_RADIUS = 300.3/PLANET_REVO_RADIUS_SCALER;//778.3/PLANET_REVO_RADIUS_SCALER;
+float SATURN_REVO_RADIUS = 500/PLANET_REVO_RADIUS_SCALER;//1427/PLANET_REVO_RADIUS_SCALER;
+float URANUS_REVO_RADIUS = 600/PLANET_REVO_RADIUS_SCALER;//2882.3/PLANET_REVO_RADIUS_SCALER;
+float NEPTUNE_REVO_RADIUS = 700/PLANET_REVO_RADIUS_SCALER;//4523.9/PLANET_REVO_RADIUS_SCALER;
 
 #define MOON_ROTATION 27.f
 #define MOON_REVO_RADIUS 0.04f
@@ -406,6 +406,31 @@ void planetMaker(vector<vec3>* sphere, vector<vec2>* texCoord, int n){
 	}
 }
 
+void generateRing(vector<vec3>* ring, vector<vec2>* texCoord){
+	float step = 2*PI_F/128.f;
+	float in_r = 67300.f/60300.f;
+	float out_r = 140300.f/60300.f;
+	for(float i = 0; i< 2*PI_F; i+=step){
+		vec3 p1 = vec3(cos(i),0,sin(i)) * in_r;
+		vec3 p2 = vec3(cos(i),0,sin(i)) * out_r;
+		vec3 p3 = vec3(cos(i+step),0,sin(i+step)) * in_r;
+		vec3 p4 = vec3(cos(i+step),0,sin(i+step)) * out_r;
+		ring->push_back(p1);
+		ring->push_back(p2);
+		ring->push_back(p3);
+		ring->push_back(p3);
+		ring->push_back(p2);
+		ring->push_back(p4);
+
+		texCoord->push_back(vec2(0.1,0));
+		texCoord->push_back(vec2(1,0));
+		texCoord->push_back(vec2(0.1,1));
+		texCoord->push_back(vec2(0.1,1));
+		texCoord->push_back(vec2(1,0));
+		texCoord->push_back(vec2(1,1));
+	}
+}
+
 void debug3(char* s, vec3 v){
 	cout << s << endl;
 	cout << v.x << "," << v.y << "," <<v.z << endl;
@@ -485,6 +510,7 @@ int main(int argc, char *argv[])
 	Geometry geometry_saturn;
 	Geometry geometry_uranus;
 	Geometry geometry_neptune;
+	Geometry geometry_saturn_ring;
 
 
 	// call function to create and fill buffers with geometry data
@@ -544,6 +570,15 @@ int main(int argc, char *argv[])
 		cout << "Failed to load geometry" << endl;
 
 
+	vector<vec3> ring;
+	vector<vec2> ringtex;
+	generateRing(&ring, &ringtex);
+	if (!InitializeVAO(&geometry_saturn_ring))
+		cout << "Program failed to intialize geometry!" << endl;
+	if(!LoadGeometry(&geometry_saturn_ring, ring.data(), ringtex.data(), ringtex.size()))
+		cout << "Failed to load geometry" << endl;
+
+
 
 	mat4 wMs, wMe, wMmoon, wMmars, wMmercury, wMjupiter, wMsaturn, wMuranus, wMvenus, wMneptune;
 	mat4 wMstar = mat4(SCALER_STAR * vec4(1,0,0,0), SCALER_STAR * vec4(0,1,0,0), SCALER_STAR * vec4(0,0,1,0), vec4(0,0,0,1));
@@ -564,7 +599,7 @@ int main(int argc, char *argv[])
 	//------------------------- Bind texture ------------------------//
 
 	MyTexture texture_sun, texture_earth, texture_star, texture_moon, texture_earthnight;
-	MyTexture texture_mars, texture_venus, texture_mercury, texture_saturn, texture_jupiter, texture_uranus, texture_neptune;
+	MyTexture texture_mars, texture_venus, texture_mercury, texture_saturn, texture_jupiter, texture_uranus, texture_neptune, texture_saturn_ring;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earth, "2k_earth_daymap.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_star, "8k_stars_milky_way.jpg", GL_TEXTURE_2D);
@@ -577,6 +612,7 @@ int main(int argc, char *argv[])
 	InitializeTexture(&texture_saturn, "2k_saturn.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_uranus, "2k_uranus.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_venus, "2k_venus_atmosphere.jpg", GL_TEXTURE_2D);
+	InitializeTexture(&texture_saturn_ring, "2k_saturn_ring_alpha.png", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
 	glActiveTexture(GL_TEXTURE1);
@@ -601,6 +637,9 @@ int main(int argc, char *argv[])
 	glBindTexture(GL_TEXTURE_2D, texture_uranus.textureID);
 	glActiveTexture(GL_TEXTURE11);
 	glBindTexture(GL_TEXTURE_2D, texture_neptune.textureID);
+	glActiveTexture(GL_TEXTURE12);
+	glBindTexture(GL_TEXTURE_2D, texture_saturn_ring.textureID);
+
 
 	//------------------------- Bind texture ------------------------//
 
@@ -748,7 +787,7 @@ int main(int argc, char *argv[])
 		Rotation = moonTilt * Rotation;
 		
 		timer = moonRevoTimer;
-		Transition = MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		Transition = earthTilt * MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		mat4 eMmoon = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));;	// Moon to earth
 		wMmoon = mat4(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),wMe[3]) * eMmoon;
 
@@ -791,6 +830,7 @@ int main(int argc, char *argv[])
 		timer = saturnRevoTimer;
 		Transition = SATURN_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		wMsaturn = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));
+
 
 		// Uranus
 		timer = uranusTimer; 
@@ -927,13 +967,23 @@ int main(int argc, char *argv[])
 
 		// Render Jupiter
 		glUseProgram(program);
-		glUniform1i(glGetUniformLocation(program, "image"), 6);
+		glUniform1i(glGetUniformLocation(program, "image"), 8);
 		RenderScene(&texture_jupiter, &geometry_jupiter, program, &cam, perspectiveMatrix, wMjupiter, GL_TRIANGLES,1,0, &texture_jupiter);
 
 		// Render Saturn
 		glUseProgram(program);
+		// glActiveTexture(GL_TEXTURE9);
+		// glBindTexture(GL_TEXTURE_2D, texture_saturn.textureID);
 		glUniform1i(glGetUniformLocation(program, "image"), 9);
 		RenderScene(&texture_saturn, &geometry_saturn, program, &cam, perspectiveMatrix, wMsaturn, GL_TRIANGLES,1,0, &texture_saturn);
+
+		// Render Saturn Rings
+		glUseProgram(program);
+		// glActiveTexture(GL_TEXTURE9);
+		// glBindTexture(GL_TEXTURE_2D, texture_saturn_ring.textureID);
+		glUniform1i(glGetUniformLocation(program, "image"), 12);
+		RenderScene(&texture_saturn_ring, &geometry_saturn_ring, program, &cam, perspectiveMatrix, wMsaturn, GL_TRIANGLES,0,0, &texture_saturn_ring); 
+
 
 		// Render Uranus
 		glUseProgram(program);
@@ -944,7 +994,6 @@ int main(int argc, char *argv[])
 		glUseProgram(program);
 		glUniform1i(glGetUniformLocation(program, "image"), 11);
 		RenderScene(&texture_neptune, &geometry_neptune, program, &cam, perspectiveMatrix, wMneptune, GL_TRIANGLES,1,0, &texture_neptune);
-
 
 		glfwSwapBuffers(window);
 
