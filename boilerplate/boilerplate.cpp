@@ -268,6 +268,55 @@ void RenderScene(MyTexture* tex, Geometry *geometry, GLuint program, Camera* cam
 	CheckGLErrors();
 }
 
+void RenderEarth(MyTexture* tex, Geometry *geometry, GLuint program, Camera* camera, mat4 perspectiveMatrix, mat4 wMp, GLenum rendermode, int shadeflg, int nightflg, MyTexture* nighttex, MyTexture* spectex)
+{
+
+	// bind our shader program and the vertex array object containing our
+	// scene geometry, then tell OpenGL to draw our geometry
+	glUseProgram(program);
+
+	int vp [4];
+	glGetIntegerv(GL_VIEWPORT, vp);
+	int width = vp[2];
+	int height = vp[3];
+
+
+	//Bind uniforms
+	GLint uniformLocation;
+
+	mat4 modelViewProjection = perspectiveMatrix*camera->viewMatrix();
+	uniformLocation = glGetUniformLocation(program, "modelViewProjection");
+	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(modelViewProjection));
+
+	uniformLocation = glGetUniformLocation(program, "modelMatrix");
+	glUniformMatrix4fv(uniformLocation, 1, false, glm::value_ptr(wMp));
+
+	uniformLocation = glGetUniformLocation(program, "shade_flg");
+	glUniform1i(uniformLocation, shadeflg);
+
+	uniformLocation = glGetUniformLocation(program, "night_flg");
+	glUniform1i(uniformLocation, nightflg);
+
+	glBindVertexArray(geometry->vertexArray);
+	glBindTexture(tex->target, tex->textureID);
+	glDrawArrays(rendermode, 0, geometry->elementCount);
+
+	glBindVertexArray(geometry->vertexArray);
+	glBindTexture(nighttex->target, nighttex->textureID);
+	glDrawArrays(rendermode, 0, geometry->elementCount);
+
+	glBindVertexArray(geometry->vertexArray);
+	glBindTexture(spectex->target, spectex->textureID);
+	glDrawArrays(rendermode, 0, geometry->elementCount);
+
+	// reset state to default (no shader or geometry bound)
+	glBindVertexArray(0);
+	glUseProgram(0);
+
+	// check for an report any OpenGL errors
+	CheckGLErrors();
+}
+
 // --------------------------------------------------------------------------
 // GLFW callback functions
 int pause_flg = 0;
@@ -484,6 +533,7 @@ int main(int argc, char *argv[])
 		cout << "Program could not initialize shaders, TERMINATING" << endl;
 		return -1;
 	}
+	GLuint program1 = InitializeShaders();
 
 
 	glEnable(GL_DEPTH_TEST);
@@ -599,12 +649,13 @@ int main(int argc, char *argv[])
 	//------------------------- Bind texture ------------------------//
 
 	MyTexture texture_sun, texture_earth, texture_star, texture_moon, texture_earthnight;
-	MyTexture texture_mars, texture_venus, texture_mercury, texture_saturn, texture_jupiter, texture_uranus, texture_neptune, texture_saturn_ring;
+	MyTexture texture_mars, texture_venus, texture_mercury, texture_saturn, texture_jupiter, texture_uranus, texture_neptune, texture_saturn_ring, texture_earth_spec_map;
 	InitializeTexture(&texture_sun, "2k_sun.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earth, "2k_earth_daymap.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_star, "8k_stars_milky_way.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_moon, "2k_moon.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_earthnight, "2k_earth_nightmap.jpg", GL_TEXTURE_2D);
+	//InitializeTexture(&texture_earthnight, "spec.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_mars, "2k_mars.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_mercury, "2k_mercury.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_neptune, "2k_neptune.jpg", GL_TEXTURE_2D);
@@ -613,6 +664,7 @@ int main(int argc, char *argv[])
 	InitializeTexture(&texture_uranus, "2k_uranus.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_venus, "2k_venus_atmosphere.jpg", GL_TEXTURE_2D);
 	InitializeTexture(&texture_saturn_ring, "2k_saturn_ring_alpha.png", GL_TEXTURE_2D);
+	InitializeTexture(&texture_earth_spec_map, "spec.jpg", GL_TEXTURE_2D);
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D, texture_sun.textureID);
 	glActiveTexture(GL_TEXTURE1);
@@ -639,6 +691,8 @@ int main(int argc, char *argv[])
 	glBindTexture(GL_TEXTURE_2D, texture_neptune.textureID);
 	glActiveTexture(GL_TEXTURE12);
 	glBindTexture(GL_TEXTURE_2D, texture_saturn_ring.textureID);
+	glActiveTexture(GL_TEXTURE13);
+	glBindTexture(GL_TEXTURE_2D, texture_earth_spec_map.textureID);
 
 
 	//------------------------- Bind texture ------------------------//
@@ -666,7 +720,7 @@ int main(int argc, char *argv[])
 	float uranusRevoTimer = 0.f;
 	float neptuneRevoTimer = 0.f;
 
-	float tilt = 23.5f/180.f * PI_F;
+	float tilt = -23.5f/180.f * PI_F;
 
 	cam.radius = SCALER_SUN + 0.7f;
 
@@ -771,7 +825,7 @@ int main(int argc, char *argv[])
 		// Earth
 		timer = earthTimer; 
 		Rotation = SCALER_EARTH * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
-		tilt = 23.5f/180.f * PI_F;
+		tilt = -23.5f/180.f * PI_F;
 		mat3 earthTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
 		Rotation =  earthTilt * Rotation;
 
@@ -782,12 +836,14 @@ int main(int argc, char *argv[])
 		// Moon
 		timer = moonTimer;
 		Rotation = SCALER_MOON * mat3(vec3(cos(timer), 0, -sin(timer)), vec3(0, 1, 0), vec3(sin(timer), 0, cos(timer)));
-		tilt = 5.f/180.f * PI_F;
+		tilt = 6.8f/180.f * PI_F;
 		mat3 moonTilt = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
 		Rotation = moonTilt * Rotation;
 		
 		timer = moonRevoTimer;
-		Transition = earthTilt * MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
+		tilt = 5.f/180.f * PI_F;
+		mat3 moon_orbital = mat3(vec3(cos(tilt), sin(tilt), 0), vec3(-sin(tilt), cos(tilt), 0), vec3(0,0,1));
+		Transition = moon_orbital * MOON_REVO_RADIUS * vec3(cos(timer) + sin(timer), 0, -sin(timer) + cos(timer));
 		mat4 eMmoon = mat4(vec4(Rotation[0],0), vec4(Rotation[1], 0), vec4(Rotation[2], 0), vec4(Transition, 1));;	// Moon to earth
 		wMmoon = mat4(vec4(1,0,0,0),vec4(0,1,0,0),vec4(0,0,1,0),wMe[3]) * eMmoon;
 
@@ -936,9 +992,11 @@ int main(int argc, char *argv[])
 
 		// Render earth
 		glUseProgram(program);
+		glUniform1i(glGetUniformLocation(program, "pecularmap"), 13);
 		glUniform1i(glGetUniformLocation(program, "image"), 1);
 		glUniform1i(glGetUniformLocation(program, "nightmap"), 4);
-		RenderScene(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES,1,1, &texture_earthnight);
+		glUniform3f(glGetUniformLocation(program, "camPosition"), cam.pos.x, cam.pos.y, cam.pos.z);
+		RenderEarth(&texture_earth, &geometry_earth, program, &cam, perspectiveMatrix, wMe, GL_TRIANGLES,1,1, &texture_earthnight, &texture_earth_spec_map);
 
 		// Render star background
 		glUseProgram(program);
@@ -972,15 +1030,11 @@ int main(int argc, char *argv[])
 
 		// Render Saturn
 		glUseProgram(program);
-		// glActiveTexture(GL_TEXTURE9);
-		// glBindTexture(GL_TEXTURE_2D, texture_saturn.textureID);
 		glUniform1i(glGetUniformLocation(program, "image"), 9);
 		RenderScene(&texture_saturn, &geometry_saturn, program, &cam, perspectiveMatrix, wMsaturn, GL_TRIANGLES,1,0, &texture_saturn);
 
 		// Render Saturn Rings
 		glUseProgram(program);
-		// glActiveTexture(GL_TEXTURE9);
-		// glBindTexture(GL_TEXTURE_2D, texture_saturn_ring.textureID);
 		glUniform1i(glGetUniformLocation(program, "image"), 12);
 		RenderScene(&texture_saturn_ring, &geometry_saturn_ring, program, &cam, perspectiveMatrix, wMsaturn, GL_TRIANGLES,0,0, &texture_saturn_ring); 
 

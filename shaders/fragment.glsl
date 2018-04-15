@@ -11,10 +11,12 @@ uniform sampler2D image;
 uniform sampler2D nightmap;
 uniform int shade_flg;
 uniform int night_flg;
+uniform vec3 camPosition;
+uniform sampler2D pecularmap;
 
-in vec2 Texcoord;
-in vec3 Vertexp;
-in vec3 center;
+in vec2 Texcoord;   
+in vec3 Vertexp;    // vertex position
+in vec3 center;     // planet center
 
 // first output is mapped to the framebuffer's colour index by default
 out vec4 FragmentColour;
@@ -33,10 +35,20 @@ void main(void)
         vec3 l = normalize(vec3(0,0,0) - Vertexp);
         float diffuse;
         diffuse = max(dot_normal(n, l), 0);
-        float ratio = min(1, 0.25 + diffuse);
+        float ratio = min(1, 0.2 + diffuse);
         
         if(night_flg == 1){
-            FragmentColour = texture(image, Texcoord) * ratio + texture(nightmap, Texcoord) * (1 - ratio);
+            vec4 spec = texture(pecularmap, Texcoord);
+            if(spec.x == 0 && spec.y == 0 && spec.z == 0){
+                FragmentColour = texture(image, Texcoord) * ratio + texture(nightmap, Texcoord) * (1 - ratio);
+            }
+            else{   // ocean
+                vec3 viewDir = normalize(camPosition - Vertexp);   // View ray
+                vec3 reflect_light = -l + 2 * n * (dot_normal(n,l));
+
+                float spec_ratio = 0.7 * max(0,dot_normal(reflect_light, viewDir));
+                FragmentColour = texture(image, Texcoord) * ratio + diffuse * pow(spec_ratio ,2) + texture(nightmap, Texcoord) * (1 - ratio);
+            }
         }
         else FragmentColour = texture(image, Texcoord) * ratio;
     }else{

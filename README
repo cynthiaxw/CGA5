@@ -52,8 +52,10 @@ Note: This is designed for linux, however it may work on Mac OSX, while it is un
 	-Scroll up and down
 
 -Change the time speed:
-	-W:	Speed up
-	-S:	Slow down
+	-W:		Speed up
+	-S:		Slow down
+	-SPACE:		Pause and continue
+	-R:		Reset the speed
 
 -Esc: Exit program
 
@@ -62,12 +64,18 @@ Note: This is designed for linux, however it may work on Mac OSX, while it is un
 ///////////////////////
 
 1. Earth night map.
-2. Completed solar system. 
+2. Earth ocean specular light.
+3. Completed solar system. 
 	-The distance between palnets was adjusted accordingly.
 	-The rotation period and revolution period are based on the real ones.
 	-Saturn rings were added.
 	-Switch between planets.
 	-Slow down or speed up the animation.
-3. The orbital inclination and axial tilt are difficult to recognize. Focus on the Earth (press 4) and adjust the camera to see the relation of the shading and rotation direction, and you will get the scense of axial tilt. At the mean time, the moon's inclination is also clear to been seen. And the moon has its axial tilt, which is only 5 degrees, as well.
+4. The orbital inclination and axial tilt are difficult to recognize. Focus on the Earth (press 4) and adjust the camera to see the relation of the shading and rotation direction, and you will get the scense of axial tilt. At the mean time, the moon's inclination is also clear to been seen. And the moon has its axial tilt, which is only 5 degrees.
+
+///////////////////////
+// Texture Reference //
+///////////////////////
+https://www.solarsystemscope.com/textures/
 	
  
